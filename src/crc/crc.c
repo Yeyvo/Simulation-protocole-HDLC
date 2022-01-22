@@ -1,4 +1,4 @@
-
+#include "crc.h"
 
 // Concatenate char to String
 void append(char s[], char c)
@@ -136,6 +136,7 @@ int equals(char s1[], char s2[])
     return egaux;
 }
 
-void test(int n){
-    printf("\n##3 %d" , n);
+void test(int n)
+{
+    printf("\n##3 %d", n);
 }

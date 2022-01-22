@@ -1,0 +1,7 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/mnt/c/Users/yeyvo/Desktop/Superieur/Emi/S3/Reseau & protocoles/TP/Simulation-protocole-HDLC'
+gcc -Wall  -c src/main.c -o obj/main.o -lm
+gcc -Wall  -c src/crc/crc.c -o obj/crc.o -lm
+gcc -Wall  obj/main.o obj/crc.o -o output -lm
+make: Leaving directory '/mnt/c/Users/yeyvo/Desktop/Superieur/Emi/S3/Reseau & protocoles/TP/Simulation-protocole-HDLC'
+ 
