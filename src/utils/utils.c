@@ -42,3 +42,104 @@ char* intToBinaryCharPadded(int n, int sz){
     // res[sz] = '\0';
     return res;
 }
+
+
+char *strrev(char *str)
+{
+    char c, *front, *back;
+
+    if (!str || !*str)
+        return str;
+    for (front = str, back = str + strlen(str) - 1; front < back; front++, back--)
+    {
+        c = *front;
+        *front = *back;
+        *back = c;
+    }
+    return str;
+}
+
+
+char *int2bin(int i)
+{
+    size_t bits = sizeof(int) * (sizeof(char) * 8);
+
+    char *str = malloc(bits + 1);
+    if (!str)
+        return NULL;
+    str[bits] = 0;
+
+    // type punning because signed shift is implementation-defined
+    unsigned u = *(unsigned *)&i;
+    for (; bits--; u >>= 1)
+        str[bits] = u & 1 ? '1' : '0';
+
+    return str;
+} 
+
+
+/**
+ * @brief return 1 if s1 equals s2
+ * 
+ * @param s1 
+ * @param s2 
+ * @return int 
+ */
+int equals(char s1[], char s2[])
+{
+    int compt = 0;
+    int egaux = 1;
+    while (compt < strlen(s1))
+    {
+        if (s1[compt] != s2[compt])
+        {
+            egaux = 0;
+        }
+    }
+    return egaux;
+}
+
+/**
+ * @brief function to convert integer to binary string
+ * 
+ * @param num 
+ * @return char* 
+ */
+char *toBin(long long int num)
+{
+    char *bin = malloc(sizeof(long long int) * 8);
+    while (num)
+    {
+        if (num & 1)
+        {
+            // bin = "1" + bin;
+            strcat(bin, "1");
+        }
+        else
+        {
+            // bin = "0" + bin;
+            strcat(bin, "0");
+        }
+        num = num >> 1;
+    }
+
+    return strrev(bin);
+}
+
+/**
+ * @brief function to convert binary string to decimal
+ * 
+ * @param bin 
+ * @param len 
+ * @return int 
+ */
+int toDec(char bin[], int len)
+{
+    int num = 0;
+    for (int i = 0; i < len; i++)
+    {
+        if (bin[i] == '1')
+            num += 1 << (len - i - 1);
+    }
+    return num;
+}

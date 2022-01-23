@@ -13,5 +13,9 @@
 char* intToBinaryChar(int n);
 void substring(char s[], char sub[], int p, int l);
 char* intToBinaryCharPadded(int n, int sz);
-
+char *strrev(char *str);
+char * int2bin(int i);
+char *toBin(long long int num);
+int toDec(char bin[], int len);
+int equals(char s1[], char s2[]);
 #endif 

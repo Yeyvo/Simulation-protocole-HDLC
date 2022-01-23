@@ -16,10 +16,9 @@ void addMessage(char *data, Trame *trameToSend, char *control)
      * @brief NEED to handle case where input data is less or more than 32
      *
      */
-    // strncpy(trameToSend->Data, data, strlen(data) * sizeof(char));
     strncpy(trameToSend->Data, data, strlen(data) * sizeof(char));
-    strncpy(trameToSend->FCS, CRC2(data, Generator, strlen(data), strlen(Generator)), 16 * sizeof(char));
-    strncpy(trameToSend->Adr, "11000000\0", 9 * sizeof(char)); // commande de l'ETCD vers l'ETTD : @A = 11000000
+    strncpy(trameToSend->FCS, CRC2(data, Generator, strlen(data), strlen(Generator), 16), 16 * sizeof(char));
+    strncpy(trameToSend->Adr, "10000000\0", 10 * sizeof(char)); // commande de l'ETCD vers l'ETTD : @A = 11000000
     strncpy(trameToSend->Control, control, 8 * sizeof(char));
 }
 
@@ -54,6 +53,39 @@ bits à 1 et d'un bit à 0.
  */
 Trame *Encode(Trame *trame)
 {
+    int cOne = 0;
+    int size = strlen(trame->Data) + strlen(trame->FCS) + strlen(trame->Adr) + strlen(trame->Control) + 1;
+    char *allTrame = calloc(size, sizeof(char));
+    strcat(allTrame, trame->Adr);
+    strcat(allTrame, trame->Control);
+    strcat(allTrame, trame->Data);
+    strcat(allTrame, trame->FCS);
+    allTrame[size] = '\0';
+    for (int i = 0; i < strlen(allTrame); i++)
+    {
+        if (allTrame[i] = '1')
+        {
+            cOne++;
+        }
+        else
+        {
+            cOne = 0;
+        }
+        if (cOne == 5)
+        {
+            cOne = 0;
+            char data = '\0';
+            data = allTrame[i + 1];
+            allTrame[i + 1] = allTrame[i];
+            allTrame[i] = '0';
+            for (int z = i + 1; allTrame[z] != '\0'; z++)
+            {
+                allTrame[z + 1] = data;
+                data = allTrame[z + 2];
+            }
+        }
+    }
+
     return trame;
 }
 
@@ -64,6 +96,35 @@ Trame *Encode(Trame *trame)
  */
 Trame *Decode(Trame *trame)
 {
+    int cOne = 0;
+    char *allTrame = calloc(strlen(trame->Data) + strlen(trame->FCS) + strlen(trame->Adr) + strlen(trame->Control), sizeof(char));
+    strcat(allTrame, trame->Adr);
+    strcat(allTrame, trame->Control);
+    strcat(allTrame, trame->Data);
+    strcat(allTrame, trame->FCS);
+    for (int i = 0; i < strlen(allTrame); i++)
+    {
+        if (allTrame[i] = '1')
+        {
+            cOne++;
+        }
+        else
+        {
+            cOne = 0;
+        }
+        if (cOne == 5)
+        {
+            cOne = 0;
+            char data = '\0';
+            data = allTrame[i + 1];
+            allTrame[i] = allTrame[i + 1];
+            for (int z = i; allTrame[z] != '\0'; z++)
+            {
+                allTrame[z - 1] = data;
+                data = allTrame[z - 2];
+            }
+        }
+    }
     return trame;
 }
 

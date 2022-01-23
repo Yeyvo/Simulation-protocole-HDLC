@@ -14,7 +14,7 @@
 
 typedef struct
 {
-    char Adr[8];
+    char Adr[9];
     char Control[9];
     char Data[33];
     char FCS[16];

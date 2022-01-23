@@ -9,7 +9,7 @@ int PIPEDES_P[2]; // comunication with parent
 int PIPEDES_C[2]; // communication with child
 char fanion[] = "01111110";
 int mutexPrint = -1;
-
+char PolyGenerator[] = "10001000000100001";
 int isChildConnected = FALSE;
 int isFatherConnected = FALSE;
 
@@ -24,11 +24,6 @@ void sendTrame(Trame *trameToSend, SendReceive *number, int where);
  */
 int main(int argc, char const *argv[])
 {
-    // SendReceive *dataSR = createSendReceive();
-    // dataSR->NS = 3;
-    // dataSR->NR = 5;
-    // createControl(I, dataSR, 1,NULL, NULL);
-
     mutexPrint = semget(IPC_PRIVATE, 1, IPC_EXCL | IPC_CREAT | 666);
     if (mutexPrint == -1)
     {
@@ -44,12 +39,6 @@ int main(int argc, char const *argv[])
         int resFork = fork();
         if (resFork > 0)
         {
-            // if (DEBUG == 1)
-            // {
-            //     printf("Press Any Key to Continue\n");
-            //     getchar();
-            // }
-            // int connected = FALSE;
             // Pere
 
             SendReceive *dataSR;
@@ -68,8 +57,9 @@ int main(int argc, char const *argv[])
                 }
                 else
                 {
-                    trameRead = receiveTrame(dataSR,0);
-                    if(isDISC(trameRead)){
+                    trameRead = receiveTrame(dataSR, 0);
+                    if (isDISC(trameRead))
+                    {
                         break;
                     }
                 }
@@ -83,12 +73,12 @@ int main(int argc, char const *argv[])
                 getchar();
             }
             // fils
-            
+
             int i = 0;
             SendReceive *dataSR;
             Trame *trameToSend;
-            // Trame *trameRead;
-
+            char data[4][33] = {"01101000011000010110110101111010", "10100101011001010100100110101001",
+                                "00101010101010000101010010101001", "10101010101010101010101010101001"};
             while (TRUE)
             {
                 if (isChildConnected == FALSE)
@@ -96,22 +86,15 @@ int main(int argc, char const *argv[])
                     dataSR = createSendReceive();
                     trameToSend = createTrame("", SABMCommand(dataSR, 1));
 
-                    sendTrame(trameToSend, dataSR,0);
-
-                    // if (isSABM(trameRead))
-                    // {
-                    //     connected == TRUE;
-                    // }
+                    sendTrame(trameToSend, dataSR, 0);
                 }
                 else
                 {
-                    if (i == 0)
+                    if (i <= 3)
                     {
-                        char data[33] = "01101000011000010110110101111010\0";
+                        trameToSend = createTrame(data[i], ITypeCommand(dataSR, 1));
 
-                        trameToSend = createTrame(data, ITypeCommand(dataSR, 1));
-
-                        sendTrame(trameToSend, dataSR,0);
+                        sendTrame(trameToSend, dataSR, 0);
                         i++;
                     }
                     else
@@ -119,8 +102,9 @@ int main(int argc, char const *argv[])
                         printf("\n#####  End Of Connection   #####\n");
                         // disconection
                         trameToSend = createTrame("", DISCCommand(dataSR, 1));
-                        sendTrame(trameToSend, dataSR,0);
-                        if(!isChildConnected){
+                        sendTrame(trameToSend, dataSR, 0);
+                        if (!isChildConnected)
+                        {
                             break;
                         }
                     }
@@ -191,20 +175,27 @@ void sendTrame(Trame *trameToSend, SendReceive *number, int where)
              * @TODO ACCEPT(Continue)(nothing to add)
              *
              */
-            if((isSABM(trameToSend) || isSABME(trameToSend))&&isChildConnected == FALSE){
+            if ((isSABM(trameToSend) || isSABME(trameToSend)) && isChildConnected == FALSE)
+            {
                 isChildConnected = TRUE;
             }
 
-            if(isDISC(trameToSend) &&isChildConnected == TRUE){
+            if (isDISC(trameToSend) && isChildConnected == TRUE)
+            {
                 isChildConnected = FALSE;
             }
         }
         else
-        {
-            /**
-             * @TODO IN CASE OF A REJECT RESEND DATA
-             *
-             */
+        { /**
+           * @brief Cas du rejet (on renvois la trame)
+           *
+           */
+            if (isREJ(trameRead))
+            {
+                number->NR = number->NR - 1;
+                number->NS = number->NS - 1;
+                sendTrame(trameToSend, number, where);
+            }
         }
     }
 }
@@ -229,10 +220,6 @@ Trame *receiveTrame(SendReceive *number, int where)
     }
 
     Read->trame = *Decode(&(Read->trame));
-    // if (DEBUG == 1)
-    // {
-    //     DebugTrameAll(Read, "RECEIVED", mutexPrint, number);
-    // }
 
     if (!isTrameUType(&(Read->trame))) // U type are unumbered
     {
@@ -241,14 +228,34 @@ Trame *receiveTrame(SendReceive *number, int where)
 
     if (isRequestPool(&(Read->trame)))
     { // aknowlege POOL
-        Trame *ackPool = createTrame("", UACommand(number, 0));
-        if (where == 0)
+        int pass = 1;
+        if (isTrameIType(&(Read->trame)))
         {
-            sendTrame(ackPool, number, 1);
+            Trame *tr = &(Read->trame);
+            char *datatoCRC = calloc(strlen(tr->Data) + strlen(tr->FCS), sizeof(char));
+            strcat(datatoCRC, tr->Data);
+            strcat(datatoCRC, tr->FCS);
+
+            if (atoi(CRC2(datatoCRC, PolyGenerator, strlen(tr->Data) + strlen(tr->FCS), strlen(PolyGenerator), 16)))
+            {
+                pass = 1;
+            }
+            else
+            {
+                !pass;
+            }
         }
-        else if (where == 1)
+        if (pass)
         {
-            sendTrame(ackPool, number, 0);
+            Trame *ackPool = createTrame("", UACommand(number, 0));
+            if (where == 0)
+            {
+                sendTrame(ackPool, number, 1);
+            }
+            else if (where == 1)
+            {
+                sendTrame(ackPool, number, 0);
+            }
         }
     }
 
