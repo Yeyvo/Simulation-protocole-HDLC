@@ -9,6 +9,10 @@ int PIPEDES_P[2]; // comunication with parent
 int PIPEDES_C[2]; // communication with child
 char fanion[] = "01111110";
 int mutexPrint = -1;
+
+int isChildConnected = FALSE;
+int isFatherConnected = FALSE;
+
 Trame *receiveTrame(SendReceive *number, int where);
 void sendTrame(Trame *trameToSend, SendReceive *number, int where);
 
@@ -45,7 +49,7 @@ int main(int argc, char const *argv[])
             //     printf("Press Any Key to Continue\n");
             //     getchar();
             // }
-            int connected = FALSE;
+            // int connected = FALSE;
             // Pere
 
             SendReceive *dataSR;
@@ -53,18 +57,21 @@ int main(int argc, char const *argv[])
 
             while (TRUE)
             {
-                if (connected == FALSE)
+                if (isFatherConnected == FALSE)
                 {
                     dataSR = createSendReceive();
                     trameRead = receiveTrame(dataSR, 0);
                     if (isSABM(trameRead))
                     {
-                        connected = TRUE;
+                        isFatherConnected = TRUE;
                     }
                 }
                 else
                 {
-                    trameRead = receiveTrame(dataSR);
+                    trameRead = receiveTrame(dataSR,0);
+                    if(isDISC(trameRead)){
+                        break;
+                    }
                 }
             }
         }
@@ -76,7 +83,7 @@ int main(int argc, char const *argv[])
                 getchar();
             }
             // fils
-            int connected = FALSE;
+            
             int i = 0;
             SendReceive *dataSR;
             Trame *trameToSend;
@@ -84,12 +91,12 @@ int main(int argc, char const *argv[])
 
             while (TRUE)
             {
-                if (connected == FALSE)
+                if (isChildConnected == FALSE)
                 {
                     dataSR = createSendReceive();
                     trameToSend = createTrame("", SABMCommand(dataSR, 1));
 
-                    sendTrame(trameToSend, dataSR);
+                    sendTrame(trameToSend, dataSR,0);
 
                     // if (isSABM(trameRead))
                     // {
@@ -104,13 +111,18 @@ int main(int argc, char const *argv[])
 
                         trameToSend = createTrame(data, ITypeCommand(dataSR, 1));
 
-                        sendTrame(trameToSend, dataSR);
+                        sendTrame(trameToSend, dataSR,0);
                         i++;
                     }
                     else
                     {
                         printf("\n#####  End Of Connection   #####\n");
                         // disconection
+                        trameToSend = createTrame("", DISCCommand(dataSR, 1));
+                        sendTrame(trameToSend, dataSR,0);
+                        if(!isChildConnected){
+                            break;
+                        }
                     }
                 }
             }
@@ -164,13 +176,28 @@ void sendTrame(Trame *trameToSend, SendReceive *number, int where)
     if (isRequestPool(&(Write->trame)))
     { // wait for acknolegement POOL
         printf("\n wait for pool aknow\n");
-        Trame *trameRead = receiveTrame(number);
+        Trame *trameRead;
+        if (where == 0)
+        {
+            trameRead = receiveTrame(number, 1);
+        }
+        else if (where == 1)
+        {
+            trameRead = receiveTrame(number, 0);
+        }
         if (isUA(trameRead))
         {
             /**
              * @TODO ACCEPT(Continue)(nothing to add)
              *
              */
+            if((isSABM(trameToSend) || isSABME(trameToSend))&&isChildConnected == FALSE){
+                isChildConnected = TRUE;
+            }
+
+            if(isDISC(trameToSend) &&isChildConnected == TRUE){
+                isChildConnected = FALSE;
+            }
         }
         else
         {
@@ -202,10 +229,10 @@ Trame *receiveTrame(SendReceive *number, int where)
     }
 
     Read->trame = *Decode(&(Read->trame));
-    if (DEBUG == 1)
-    {
-        DebugTrameAll(Read, "RECEIVED", mutexPrint, number);
-    }
+    // if (DEBUG == 1)
+    // {
+    //     DebugTrameAll(Read, "RECEIVED", mutexPrint, number);
+    // }
 
     if (!isTrameUType(&(Read->trame))) // U type are unumbered
     {
