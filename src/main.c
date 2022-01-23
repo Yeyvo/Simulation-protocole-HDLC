@@ -159,7 +159,6 @@ void sendTrame(Trame *trameToSend, SendReceive *number, int where)
 
     if (isRequestPool(&(Write->trame)))
     { // wait for acknolegement POOL
-        printf("\n wait for pool aknow\n");
         Trame *trameRead;
         if (where == 0)
         {
