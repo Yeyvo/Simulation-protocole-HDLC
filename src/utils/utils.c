@@ -3,7 +3,7 @@
 char* intToBinaryChar(int n) /* Function to convert decimal to binary.*/
 {
     int remainder;
-    long long int i = 1, j = 1;
+    long long int i = 1;
     long long int binaryRepresentation = 0;
     while (n != 0)
     {

@@ -30,10 +30,6 @@ char *CRC2(char dataword[], char generator[], int lenData, int lenGene, int lenP
 
         shft = (int)ceill(log2l(dividend + 1)) - l_gen;
     }
-
-    int codeword = (dword << (l_gen - 1)) | dividend;
-
-    
     return intToBinaryCharPadded(dividend,lenPad);
 }
 
