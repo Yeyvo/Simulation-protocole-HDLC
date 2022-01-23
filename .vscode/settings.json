@@ -4,6 +4,8 @@
         "math.h": "c",
         "crc.h": "c",
         "utils.h": "c",
-        "hdlc.h": "c"
+        "hdlc.h": "c",
+        "unistd.h": "c",
+        "stdlib.h": "c"
     }
 }

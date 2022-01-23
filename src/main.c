@@ -5,11 +5,12 @@
 #include <string.h>
 #include "hdlc/hdlc.h"
 
-int PIPEDES[2];
+int PIPEDES_P[2]; // comunication with parent
+int PIPEDES_C[2]; // communication with child
 char fanion[] = "01111110";
-
-void sendTrame(Trame *trameToSend, SendReceive *number);
-Trame *receiveTrame(SendReceive *number);
+int mutexPrint = -1;
+Trame *receiveTrame(SendReceive *number, int where);
+void sendTrame(Trame *trameToSend, SendReceive *number, int where);
 
 /**
  * @brief Le processus fils contacte le processus pére en utlisant le protocole HDLC
@@ -24,21 +25,48 @@ int main(int argc, char const *argv[])
     // dataSR->NR = 5;
     // createControl(I, dataSR, 1,NULL, NULL);
 
-    int resPipe = pipe(PIPEDES);
-    if (!resPipe)
+    mutexPrint = semget(IPC_PRIVATE, 1, IPC_EXCL | IPC_CREAT | 666);
+    if (mutexPrint == -1)
+    {
+        printf("\n**Erreur Semaphore**\n");
+        exit(1);
+    }
+    semctl(mutexPrint, 0, SETVAL, 1);
+
+    int resPipeP = pipe(PIPEDES_P);
+    int resPipeC = pipe(PIPEDES_C);
+    if (!resPipeP && !resPipeC)
     {
         int resFork = fork();
         if (resFork > 0)
         {
-            if (DEBUG == 1)
-            {
-                printf("Press Any Key to Continue\n");
-                getchar();
-            }
-
+            // if (DEBUG == 1)
+            // {
+            //     printf("Press Any Key to Continue\n");
+            //     getchar();
+            // }
+            int connected = FALSE;
             // Pere
-            SendReceive *dataSR = createSendReceive();
-            Trame *trameRead = receiveTrame(dataSR);
+
+            SendReceive *dataSR;
+            Trame *trameRead;
+
+            while (TRUE)
+            {
+                if (connected == FALSE)
+                {
+                    dataSR = createSendReceive();
+                    trameRead = receiveTrame(dataSR, 0);
+                    if (isSABM(trameRead))
+                    {
+                        connected = TRUE;
+                    }
+                }
+                else
+                {
+                    trameRead = receiveTrame(dataSR);
+                }
+            }
         }
         else if (resFork == 0)
         {
@@ -48,16 +76,44 @@ int main(int argc, char const *argv[])
                 getchar();
             }
             // fils
-            SendReceive *dataSR = createSendReceive();
+            int connected = FALSE;
+            int i = 0;
+            SendReceive *dataSR;
+            Trame *trameToSend;
+            // Trame *trameRead;
 
-            Trame *trameToSend = malloc(sizeof(Trame));
+            while (TRUE)
+            {
+                if (connected == FALSE)
+                {
+                    dataSR = createSendReceive();
+                    trameToSend = createTrame("", SABMCommand(dataSR, 1));
 
-            char data[33] = "01101000011000010110110101111010\0";
-            // char *data = "01101000011000010110110101111010";
+                    sendTrame(trameToSend, dataSR);
 
-            addMessage(data, trameToSend, ITypeCommand(dataSR,1));
+                    // if (isSABM(trameRead))
+                    // {
+                    //     connected == TRUE;
+                    // }
+                }
+                else
+                {
+                    if (i == 0)
+                    {
+                        char data[33] = "01101000011000010110110101111010\0";
 
-            sendTrame(trameToSend, dataSR);
+                        trameToSend = createTrame(data, ITypeCommand(dataSR, 1));
+
+                        sendTrame(trameToSend, dataSR);
+                        i++;
+                    }
+                    else
+                    {
+                        printf("\n#####  End Of Connection   #####\n");
+                        // disconection
+                    }
+                }
+            }
         }
         else
         {
@@ -73,8 +129,14 @@ int main(int argc, char const *argv[])
 
     return 0;
 }
-
-void sendTrame(Trame *trameToSend, SendReceive *number)
+/**
+ * @brief
+ *
+ * @param trameToSend
+ * @param number
+ * @param where (0 => write to Parent | 1 => write to child)
+ */
+void sendTrame(Trame *trameToSend, SendReceive *number, int where)
 {
     trameToSend = Encode(trameToSend);
     TrameAll *Write = malloc(sizeof(TrameAll));
@@ -83,22 +145,85 @@ void sendTrame(Trame *trameToSend, SendReceive *number)
 
     if (DEBUG == 1)
     {
-        DebugTrameAll(Write, "SENT");
+        DebugTrameAll(Write, "SENT", mutexPrint, number);
     }
-    write(PIPEDES[1], Write, sizeof(TrameAll));
-    UpdateNS(number);
-}
+    if (where == 0)
+    {
+        write(PIPEDES_P[1], Write, sizeof(TrameAll));
+    }
+    else if (where == 1)
+    {
+        write(PIPEDES_C[1], Write, sizeof(TrameAll));
+    }
 
-Trame *receiveTrame(SendReceive *number)
+    if (!isTrameUType(&(Write->trame))) // U type are unumbered
+    {
+        UpdateNS(number);
+    }
+
+    if (isRequestPool(&(Write->trame)))
+    { // wait for acknolegement POOL
+        printf("\n wait for pool aknow\n");
+        Trame *trameRead = receiveTrame(number);
+        if (isUA(trameRead))
+        {
+            /**
+             * @TODO ACCEPT(Continue)(nothing to add)
+             *
+             */
+        }
+        else
+        {
+            /**
+             * @TODO IN CASE OF A REJECT RESEND DATA
+             *
+             */
+        }
+    }
+}
+/**
+ * @brief
+ *
+ * @param number
+ * @param where (0 => read from Parent | 1 => read from child)
+ * @return Trame*
+ */
+Trame *receiveTrame(SendReceive *number, int where)
 {
     TrameAll *Read = malloc(sizeof(TrameAll));
-    read(PIPEDES[0], Read, sizeof(TrameAll));
+
+    if (where == 0)
+    {
+        read(PIPEDES_P[0], Read, sizeof(TrameAll));
+    }
+    else if (where == 1)
+    {
+        read(PIPEDES_C[0], Read, sizeof(TrameAll));
+    }
+
     Read->trame = *Decode(&(Read->trame));
     if (DEBUG == 1)
     {
-        DebugTrameAll(Read, "RECEIVED");
+        DebugTrameAll(Read, "RECEIVED", mutexPrint, number);
     }
-    UpdateNR(number);
+
+    if (!isTrameUType(&(Read->trame))) // U type are unumbered
+    {
+        UpdateNR(number);
+    }
+
+    if (isRequestPool(&(Read->trame)))
+    { // aknowlege POOL
+        Trame *ackPool = createTrame("", UACommand(number, 0));
+        if (where == 0)
+        {
+            sendTrame(ackPool, number, 1);
+        }
+        else if (where == 1)
+        {
+            sendTrame(ackPool, number, 0);
+        }
+    }
+
     return &(Read->trame);
 }
-

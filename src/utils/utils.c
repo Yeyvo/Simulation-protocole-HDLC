@@ -1,5 +1,5 @@
 #include "utils.h"
-
+ 
 char* intToBinaryChar(int n) /* Function to convert decimal to binary.*/
 {
     int remainder;

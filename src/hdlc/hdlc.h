@@ -7,6 +7,7 @@
 #include <string.h>
 #include "../crc/crc.h"
 #include "../utils/utils.h"
+#include "../Semaphore/sem.h"
 
 
 #define DEBUG 1
@@ -40,8 +41,8 @@ typedef enum
 
 
 void addMessage(char *data, Trame *trameToSend, char * control);
-void createTrame(char *data, Trame *trameToSend);
-void DebugTrameAll(TrameAll *trameA, char *str);
+Trame * createTrame(char *data, char * control);
+void DebugTrameAll(TrameAll *trameA, char *str, int mutex, SendReceive *sendReceiveData);
 void DebugTrame(Trame *trame);
 Trame *Decode(Trame *trame);
 Trame *Encode(Trame *trame);
@@ -64,5 +65,21 @@ char* DISCCommand(SendReceive *dataSendReceive, int pool);
 char* DMCommand(SendReceive *dataSendReceive, int pool);
 char* FRMRCommand(SendReceive *dataSendReceive, int pool);
 
+int isTrameIType(Trame *trame);
+int isTrameSType(Trame *trame);
+int isTrameUType(Trame *trame);
 
+int isRR(Trame *trame);
+int isRNR(Trame *trame);
+int isREJ(Trame *trame);
+int isSREJ(Trame *trame);
+int isSABM(Trame *trame);
+int isSABME(Trame *trame);
+int isUA(Trame *trame);
+int isDISC(Trame *trame);
+int isDM(Trame *trame);
+int isFRMR(Trame *trame);
+int isRequestPool(Trame* trame);
+
+int getCharType(Trame * trame);
 #endif

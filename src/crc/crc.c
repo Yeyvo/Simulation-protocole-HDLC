@@ -285,7 +285,7 @@ char *int2bin(int i)
         str[bits] = u & 1 ? '1' : '0';
 
     return str;
-}
+} 
 // #define BUF_SIZE 33
 
 // int main() {
