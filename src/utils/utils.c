@@ -29,7 +29,7 @@ void substring(char s[], char sub[], int p, int l) {
 }
 char* intToBinaryCharPadded(int n, int sz){
     char * bc = intToBinaryChar(n);
-    char *res = (char *) calloc(sz + 1,sizeof(char)) ;
+    char *res = (char *) calloc(sz,sizeof(char)) ;
     int maxPad = sz - strlen(bc);
     for(int i = 0, z = 0 ; i< sz; i++){
         if(i<maxPad){
@@ -39,6 +39,6 @@ char* intToBinaryCharPadded(int n, int sz){
             z++;
         }
     }
-    res[sz] = '\0';
+    // res[sz] = '\0';
     return res;
 }

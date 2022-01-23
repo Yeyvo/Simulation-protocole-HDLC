@@ -55,7 +55,7 @@ int main(int argc, char const *argv[])
             char data[33] = "01101000011000010110110101111010\0";
             // char *data = "01101000011000010110110101111010";
 
-            addMessage(data, trameToSend);
+            addMessage(data, trameToSend, ITypeCommand(dataSR,1));
 
             sendTrame(trameToSend, dataSR);
         }

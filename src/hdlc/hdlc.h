@@ -14,7 +14,7 @@
 typedef struct
 {
     char Adr[8];
-    char Control[8];
+    char Control[9];
     char Data[33];
     char FCS[16];
 } Trame;
@@ -39,7 +39,7 @@ typedef enum
 } ControlType;
 
 
-void addMessage(char *data, Trame *trameToSend);
+void addMessage(char *data, Trame *trameToSend, char * control);
 void createTrame(char *data, Trame *trameToSend);
 void DebugTrameAll(TrameAll *trameA, char *str);
 void DebugTrame(Trame *trame);
@@ -49,6 +49,8 @@ SendReceive *createSendReceive();
 void UpdateNR(SendReceive *dataSendReceive);
 void UpdateNS(SendReceive *dataSendReceive);
 char *createControl(ControlType type, SendReceive *dataSendReceive, int pool, int C1[2], int C2[3]);
+//I-Type generic command
+char* ITypeCommand(SendReceive *dataSendReceive, int pool);
 //S-Type COMMANDS
 char* RRCommand(SendReceive *dataSendReceive, int pool);
 char* RNRCommand(SendReceive *dataSendReceive, int pool);

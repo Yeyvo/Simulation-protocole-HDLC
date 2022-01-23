@@ -2,7 +2,7 @@
 
 char Generator[] = "10001000000100001";
 
-void addMessage(char *data, Trame *trameToSend)
+void addMessage(char *data, Trame *trameToSend, char * control)
 {
     /**
      * @brief NEED to handle case where input data is less or more than 32
@@ -11,8 +11,8 @@ void addMessage(char *data, Trame *trameToSend)
     // strncpy(trameToSend->Data, data, strlen(data) * sizeof(char));
     strncpy(trameToSend->Data, data, strlen(data) * sizeof(char));
     strncpy(trameToSend->FCS, CRC2(data, Generator, strlen(data), strlen(Generator)), 16 * sizeof(char));
-    strncpy(trameToSend->Adr, "11000000\0", 8 * sizeof(char)); // commande de l'ETCD vers l'ETTD : @A = 11000000
-    // strncpy(trameToSend->Adr, "11000000\0", 8 * sizeof(char)); // commande de l'ETCD vers l'ETTD : @A = 11000000
+    strncpy(trameToSend->Adr, "11000000", 8 * sizeof(char)); // commande de l'ETCD vers l'ETTD : @A = 11000000
+    strncpy(trameToSend->Control, control, 8 * sizeof(char)); 
 }
 
 
@@ -70,7 +70,8 @@ SendReceive *createSendReceive()
 char *createControl(ControlType type, SendReceive *dataSendReceive, int pool, int C1[2], int C2[3])
 {
 
-    char Control[9] = "00000000";
+    char *Control = (char *) calloc(9,sizeof(char));
+    
     char *NS, *NR;
     switch (type)
     {
@@ -79,7 +80,7 @@ char *createControl(ControlType type, SendReceive *dataSendReceive, int pool, in
         // UpdateNR(dataSendReceive);
         NS = intToBinaryCharPadded(dataSendReceive->NS, 3);
         NR = intToBinaryCharPadded(dataSendReceive->NR, 3);
-        sprintf(Control, "0%s%d%s\0", NS, pool, NR);
+        snprintf(Control,9, "0%s%d%s", NS, pool, NR);
 
         break;
     case S:; // Empty Statement
@@ -89,7 +90,7 @@ char *createControl(ControlType type, SendReceive *dataSendReceive, int pool, in
             exit(1);
         }
         NR = intToBinaryCharPadded(dataSendReceive->NR, 3);
-        sprintf(Control, "10%d%d%d%s\0", C1[0], C1[1], pool, NR);
+        snprintf(Control,9, "10%d%d%d%s", C1[0], C1[1], pool, NR);
         break;
     case U:; // Empty Statement
         if (C1 == NULL || C2 == NULL)
@@ -97,12 +98,14 @@ char *createControl(ControlType type, SendReceive *dataSendReceive, int pool, in
             printf("\n**Error NULL data (C1 or C2)**\n");
             exit(1);
         }
-        sprintf(Control, "10%d%d%d%d%d%d\0", C1[0], C1[1], pool, C2[0], C2[1], C2[2]);
+        snprintf(Control,9, "10%d%d%d%d%d%d", C1[0], C1[1], pool, C2[0], C2[1], C2[2]);
 
     default:
         printf("\n**Error while creating Controle**\n");
+        exit(1);
         break;
     }
+    Control[8] = '\0';
     return Control;
 }
 
@@ -121,7 +124,13 @@ void UpdateNR(SendReceive *dataSendReceive)
         dataSendReceive->NS = dataSendReceive->NS + 1;
     }
 }
-//COMMANDS 
+
+
+
+//I-Type
+char* ITypeCommand(SendReceive *dataSendReceive, int pool){
+    return createControl(I,dataSendReceive,pool,NULL,NULL);
+}
 
 //S-Type
 char* RRCommand(SendReceive *dataSendReceive, int pool){
