@@ -1,9 +1,11 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-//#include <sys/wait.h>
+#include <sys/wait.h>
 #include <string.h>
 #include "crc/crc.h"
+
+#define DEBUG 1
 
 typedef struct
 {
@@ -13,11 +15,25 @@ typedef struct
     char FCS[16];
 } Trame;
 
-int PIPEDES[2];
+typedef struct
+{
+    char fanionStart[8];
+    Trame trame;
+    char fanionEnd[8];
+} TrameAll;
 
+int PIPEDES[2];
+char fanion[] = "01111110";
+char Generator[] = "10001000000100001";
+// char Generator[] = "10011";
 void addMessage(char *data, Trame *trameToSend);
 void createTrame(char *data, Trame *trameToSend);
-
+Trame *receiveTrame();
+void sendTrame(Trame *trameToSend);
+void DebugTrameAll(TrameAll *trameA, char *str);
+void DebugTrame(Trame *trame);
+Trame *Decode(Trame *trame);
+Trame *Encode(Trame *trame);
 /**
  * @brief Le processus fils contacte le processus pére en utlisant le protocole HDLC
  * le fils : transmet un message sous forme de trame (il doit la creer)
@@ -26,7 +42,7 @@ void createTrame(char *data, Trame *trameToSend);
  */
 int main(int argc, char const *argv[])
 {
-    test(7);
+
     int resPipe = pipe(PIPEDES);
 
     if (!resPipe)
@@ -34,23 +50,32 @@ int main(int argc, char const *argv[])
         int resFork = fork();
         if (resFork > 0)
         {
+            if (DEBUG == 1)
+            {
+                printf("Press Any Key to Continue\n");
+                getchar();
+            }
+
             // Pere
-            // Trame *trameRead = malloc(sizeof(Trame));
-            // write(PIPEDES[0], trameRead, sizeof(Trame));
+
+            Trame *trameRead = receiveTrame();
         }
         else if (resFork == 0)
         {
+            if (DEBUG == 1)
+            {
+                printf("Press Any Key to Continue\n");
+                getchar();
+            }
             // fils
-            // int addressePere = getppid();
-            // printf("fils");
 
             Trame *trameToSend = malloc(sizeof(Trame));
 
-            // char *data = "1001010001111010101010101010010101010100101010101010101111100000";
+            char *data = "01101000011000010110110101111010";
+            // char *data = "01101000011000010110110101111010";
 
-            // addMessage(data, trameToSend);
-
-            // write(PIPEDES[1], trameToSend, sizeof(Trame));
+            addMessage(data, trameToSend);
+            sendTrame(trameToSend);
         }
         else
         {
@@ -62,26 +87,86 @@ int main(int argc, char const *argv[])
         printf("\n**Erreur PIPE**\n");
     }
 
-    //  while (wait(NULL))
-    //             {
-    //             }
-    //             printf("\n**CLOSE PIPE**\n");
-    //             close(PIPEDES[0]);
-    //             close(PIPEDES[1]);
+    printf("\n");
+
     return 0;
 }
 
 void addMessage(char *data, Trame *trameToSend)
 {
-    for (int i = 0; i < strlen(data) / 32; i++)
-    {
-        char *effectiveData;
-        strncat(effectiveData, data + i * 32, 32);
-        createTrame(effectiveData, trameToSend);
-    }
+    /**
+     * @brief NEED to handle case where input data is less or more than 32
+     *
+     */
+    // strncpy(trameToSend->Data, data, strlen(data) * sizeof(char));
+    strncpy(trameToSend->Data, data, strlen(data) * sizeof(char));
+    strncpy(trameToSend->FCS, CRC2(data, Generator, strlen(data), strlen(Generator)), 16 * sizeof(char));
 }
 
-void createTrame(char *data, Trame *trameToSend)
+void sendTrame(Trame *trameToSend)
 {
-    strncpy(trameToSend->Data, data, 32);
+    trameToSend = Encode(trameToSend);
+    TrameAll *Write = malloc(sizeof(TrameAll));
+    strncpy(Write->fanionStart, fanion, 8 * sizeof(char));
+    Write->trame = *trameToSend;
+
+    if (DEBUG == 1)
+    {
+        DebugTrameAll(Write, "SENT");
+    }
+    write(PIPEDES[1], Write, sizeof(TrameAll));
+}
+
+Trame *receiveTrame()
+{
+    TrameAll *Read = malloc(sizeof(TrameAll));
+    read(PIPEDES[0], Read, sizeof(TrameAll));
+    Read->trame = *Decode(&(Read->trame));
+    if (DEBUG == 1)
+    {
+        DebugTrameAll(Read, "RECEIVED");
+    }
+    return &(Read->trame);
+}
+
+void DebugTrameAll(TrameAll *trameA, char *str)
+{
+    if (str != NULL)
+    {
+        printf("\n##################[%s]######################\n", str);
+    }
+    else
+    {
+        printf("\n########################################\n");
+    }
+    printf("\n\tFanionStart: %s", trameA->fanionStart);
+    DebugTrame(&(trameA->trame));
+    printf("\n\tFanionEnd: %s", trameA->fanionStart);
+    printf("\n########################################\n");
+}
+
+void DebugTrame(Trame *trame)
+{
+    printf("\n\tAdress: %s\n\tControl:%s\n\tData:%s\n\tFCS:%s", trame->Adr, trame->Control, trame->Data, trame->FCS);
+}
+
+/**
+ * @brief toute suite de 5 bits consécutifs à 1 est transcodée en une suite de cinq
+bits à 1 et d'un bit à 0.
+ *
+ * @return Trame*
+ */
+Trame *Encode(Trame *trame)
+{
+    return trame;
+}
+
+/**
+ * @brief  opération inverse de Encode
+ *
+ * @return Trame*
+ */
+Trame *Decode(Trame *trame)
+{
+    return trame;
 }
