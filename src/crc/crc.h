@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <sys/types.h>
+#include "../utils/utils.h"
 #endif 
 
 
@@ -26,4 +27,4 @@ int toDec(char bin[], int len);
 char * CRC2(char dataword[], char generator[], int lenData, int lenGene);
 // char *int2bin(int a, char *buffer, int buf_size);
 char * int2bin(int i);
-char *intToBinaryChar(int n);
+// char *intToBinaryChar(int n);

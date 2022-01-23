@@ -3,9 +3,9 @@
 // Concatenate char to String
 void append(char *str, char c)
 {
-    int len = strlen(s);
-    s[len] = c;
-    s[len + 1] = '\0';
+    int len = strlen(str);
+    str[len] = c;
+    str[len + 1] = '\0';
 }
 // function to convert char into binary list
 void charToBinary(char c, int binary[])
@@ -219,23 +219,23 @@ char *CRC2(char dataword[], char generator[], int lenData, int lenGene)
     // return int2bin(dividend, buffer, 33 - 1);
 }
 
-char* intToBinaryChar(int n) /* Function to convert decimal to binary.*/
-{
-    int remainder;
-    long long int i = 1, j = 1;
-    long long int binaryRepresentation = 0;
-    while (n != 0)
-    {
-        remainder = n % 2;
-        n /= 2;
-        binaryRepresentation += remainder * i;
-        i *= 10;
-    }
-    // char *str = malloc(32*sizeof(char));
-    char *str = calloc(16,sizeof(char)) ;
-    sprintf(str, "%lld", binaryRepresentation);
-    return str;
-}
+// char* intToBinaryChar(int n) /* Function to convert decimal to binary.*/
+// {
+//     int remainder;
+//     long long int i = 1, j = 1;
+//     long long int binaryRepresentation = 0;
+//     while (n != 0)
+//     {
+//         remainder = n % 2;
+//         n /= 2;
+//         binaryRepresentation += remainder * i;
+//         i *= 10;
+//     }
+//     // char *str = malloc(32*sizeof(char));
+//     char *str = calloc(16,sizeof(char)) ;
+//     sprintf(str, "%lld", binaryRepresentation);
+//     return str;
+// }
 
 char *strrev(char *str)
 {

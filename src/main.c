@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 #include <string.h>
 #include "crc/crc.h"
+#include "utils/utils.h"
 
 #define DEBUG 1
 
@@ -11,16 +12,28 @@ typedef struct
 {
     char Adr[8];
     char Control[8];
-    char Data[32];
+    char Data[33];
     char FCS[16];
 } Trame;
 
 typedef struct
 {
-    char fanionStart[8];
+    char fanionStart[9];
     Trame trame;
-    char fanionEnd[8];
+    char fanionEnd[9];
 } TrameAll;
+
+typedef struct
+{
+    int NS;
+    int NR;
+} SendReceive;
+typedef enum
+{
+    I,
+    S,
+    U
+} ControlType;
 
 int PIPEDES[2];
 char fanion[] = "01111110";
@@ -28,12 +41,16 @@ char Generator[] = "10001000000100001";
 // char Generator[] = "10011";
 void addMessage(char *data, Trame *trameToSend);
 void createTrame(char *data, Trame *trameToSend);
-Trame *receiveTrame();
-void sendTrame(Trame *trameToSend);
+Trame *receiveTrame(SendReceive *number);
+void sendTrame(Trame *trameToSend, SendReceive *number);
 void DebugTrameAll(TrameAll *trameA, char *str);
 void DebugTrame(Trame *trame);
 Trame *Decode(Trame *trame);
 Trame *Encode(Trame *trame);
+SendReceive *createSendReceive();
+void UpdateNR(SendReceive *dataSendReceive);
+void UpdateNS(SendReceive *dataSendReceive);
+char *createControl(ControlType type, SendReceive *dataSendReceive, int pool, int C1[2], int C2[3]);
 /**
  * @brief Le processus fils contacte le processus pére en utlisant le protocole HDLC
  * le fils : transmet un message sous forme de trame (il doit la creer)
@@ -42,9 +59,12 @@ Trame *Encode(Trame *trame);
  */
 int main(int argc, char const *argv[])
 {
+    // SendReceive *dataSR = createSendReceive();
+    // dataSR->NS = 3;
+    // dataSR->NR = 5;
+    // createControl(I, dataSR, 1,NULL, NULL);
 
     int resPipe = pipe(PIPEDES);
-
     if (!resPipe)
     {
         int resFork = fork();
@@ -57,8 +77,9 @@ int main(int argc, char const *argv[])
             }
 
             // Pere
+            SendReceive *dataSR = createSendReceive();
 
-            Trame *trameRead = receiveTrame();
+            Trame *trameRead = receiveTrame(dataSR);
         }
         else if (resFork == 0)
         {
@@ -68,14 +89,15 @@ int main(int argc, char const *argv[])
                 getchar();
             }
             // fils
+            SendReceive *dataSR = createSendReceive();
 
             Trame *trameToSend = malloc(sizeof(Trame));
 
-            char *data = "01101000011000010110110101111010";
+            char data[33] = "01101000011000010110110101111010\0";
             // char *data = "01101000011000010110110101111010";
 
             addMessage(data, trameToSend);
-            sendTrame(trameToSend);
+            sendTrame(trameToSend, dataSR);
         }
         else
         {
@@ -101,9 +123,10 @@ void addMessage(char *data, Trame *trameToSend)
     // strncpy(trameToSend->Data, data, strlen(data) * sizeof(char));
     strncpy(trameToSend->Data, data, strlen(data) * sizeof(char));
     strncpy(trameToSend->FCS, CRC2(data, Generator, strlen(data), strlen(Generator)), 16 * sizeof(char));
+    strncpy(trameToSend->Adr, "11000000\0", 8 * sizeof(char)); // commande de l'ETCD vers l'ETTD : @A = 11000000
 }
 
-void sendTrame(Trame *trameToSend)
+void sendTrame(Trame *trameToSend, SendReceive *number)
 {
     trameToSend = Encode(trameToSend);
     TrameAll *Write = malloc(sizeof(TrameAll));
@@ -115,9 +138,13 @@ void sendTrame(Trame *trameToSend)
         DebugTrameAll(Write, "SENT");
     }
     write(PIPEDES[1], Write, sizeof(TrameAll));
+    // if (number != NULL)
+    // {
+    //     number->NS = number->NS + 1;
+    // }
 }
 
-Trame *receiveTrame()
+Trame *receiveTrame(SendReceive *number)
 {
     TrameAll *Read = malloc(sizeof(TrameAll));
     read(PIPEDES[0], Read, sizeof(TrameAll));
@@ -126,6 +153,10 @@ Trame *receiveTrame()
     {
         DebugTrameAll(Read, "RECEIVED");
     }
+    // if (number != NULL)
+    // {
+    //     number->NR = number->NR + 1;
+    // }
     return &(Read->trame);
 }
 
@@ -169,4 +200,66 @@ Trame *Encode(Trame *trame)
 Trame *Decode(Trame *trame)
 {
     return trame;
+}
+
+SendReceive *createSendReceive()
+{
+    SendReceive *res = (SendReceive *)malloc(sizeof(SendReceive));
+    res->NR = 0;
+    res->NS = 0;
+    return res;
+}
+
+char *createControl(ControlType type, SendReceive *dataSendReceive, int pool, int C1[2], int C2[3])
+{
+
+    char Control[9] = "00000000";
+    char *NS, *NR;
+    switch (type)
+    {
+    case I:; // Empty Statement
+        // UpdateNS(dataSendReceive);
+        // UpdateNR(dataSendReceive);
+        NS = intToBinaryCharPadded(dataSendReceive->NS, 3);
+        NR = intToBinaryCharPadded(dataSendReceive->NR, 3);
+        sprintf(Control, "0%s%d%s\0", NS, pool, NR);
+
+        break;
+    case S:; // Empty Statement
+        if (C1 == NULL)
+        {
+            printf("\n**Error NULL data (C1)**\n");
+            exit(1);
+        }
+        NR = intToBinaryCharPadded(dataSendReceive->NR, 3);
+        sprintf(Control, "10%d%d%d%s\0", C1[0], C1[1], pool, NR);
+        break;
+    case U:; // Empty Statement
+        if (C1 == NULL || C2 == NULL)
+        {
+            printf("\n**Error NULL data (C1 or C2)**\n");
+            exit(1);
+        }
+        sprintf(Control, "10%d%d%d%d%d%d\0", C1[0], C1[1], pool, C2[0], C2[1], C2[2]);
+
+    default:
+        printf("\n**Error while creating Controle**\n");
+        break;
+    }
+}
+
+void UpdateNS(SendReceive *dataSendReceive)
+{
+    if (dataSendReceive != NULL)
+    {
+        dataSendReceive->NS = dataSendReceive->NS + 1;
+    }
+}
+
+void UpdateNR(SendReceive *dataSendReceive)
+{
+    if (dataSendReceive != NULL)
+    {
+        dataSendReceive->NS = dataSendReceive->NS + 1;
+    }
 }
