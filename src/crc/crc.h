@@ -1,4 +1,4 @@
-#if !defined(CRCINC)
+#ifndef CRCINC
 #define CRCINC
 #include <stdlib.h>
 #include <stdio.h>
@@ -7,7 +7,7 @@
 #include <math.h>
 #include <sys/types.h>
 #include "../utils/utils.h"
-#endif 
+
 
 
 void append(char s[], char c);
@@ -28,3 +28,6 @@ char * CRC2(char dataword[], char generator[], int lenData, int lenGene);
 // char *int2bin(int a, char *buffer, int buf_size);
 char * int2bin(int i);
 // char *intToBinaryChar(int n);
+
+
+#endif 
